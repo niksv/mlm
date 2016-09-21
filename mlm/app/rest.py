@@ -61,12 +61,24 @@ class WebServer(object):
             if election in self._cache:
                 return self._cache[election]
             else:
+                members = self.api.get_members(only_active=True)
+                max_score = max([m.leader_score for m in members]) + 1
+                total_score = sum([max_score - m.leader_score for m in members
+                                   if m.id != election.lucky_man.id])
+
+                def chance_formatter(o):
+                    if o.id == election.lucky_man.id:
+                        return "0%"
+                    return "%.0f%%" % (
+                        (max_score - o.leader_score) * 100.0 / total_score)
+
                 scores = self._make_table(
-                    sorted(self.api.get_members(only_active=True),
+                    sorted(members,
                            key=lambda o: o.leader_score,
                            reverse=True),
-                    headers=["Name", "Score"],
-                    formaters={"score": lambda o: o.leader_score})
+                    headers=["Name", "Score", "Chance"],
+                    formaters={"score": lambda o: o.leader_score,
+                               "chance": chance_formatter})
 
                 elections = self.api.get_all_elections()
                 elections.reverse()
